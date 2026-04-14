@@ -1,11 +1,72 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { ModeWatcher } from "mode-watcher";
+	import { ModeWatcher, mode } from "mode-watcher";
+	import { profile } from '$lib/stores/profile';
+	import { onMount, onDestroy } from 'svelte';
+	import { debugOpen } from '$lib/stores/ui';
+	import { initTracker, destroyTracker } from '$lib/tracking/tracker';
+	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 
 	let { children } = $props();
+
+	let profileAnnouncement = $state('');
+
+	$effect(() => {
+		if ($profile.type !== 'Unknown') {
+			profileAnnouncement = `Perfil detectado: ${$profile.type}. ${$profile.reason}`;
+		}
+	});
+
+  $effect(() => {
+    if (typeof document !== 'undefined') {
+      if (mode.current === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  });
+
+	async function handleGlobalKeydown(e: KeyboardEvent) {
+		const tag = (e.target as HTMLElement)?.tagName;
+		const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable;
+		if (isTyping) return;
+
+		if (e.key === 'Backspace' && page.url.pathname !== '/') {
+			e.preventDefault();
+			// eslint-disable-next-line svelte/no-navigation-without-resolve
+			await goto('/');
+			return;
+		}
+
+		if (e.key === 'd' || e.key === 'D') debugOpen.update((v) => !v);
+		if (e.key === 'Escape') debugOpen.set(false);
+	}
+
+	onMount(() => {
+		initTracker();
+		window.addEventListener('keydown', handleGlobalKeydown);
+		// Persist or initialize default class
+		if (typeof document !== 'undefined' && mode.current === 'dark') {
+			document.documentElement.classList.add('dark');
+		}
+	});
+
+	onDestroy(() => {
+		destroyTracker();
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('keydown', handleGlobalKeydown);
+		}
+	});
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <ModeWatcher />
+
+<div class="sr-only" aria-live="polite">
+	{profileAnnouncement}
+</div>
+
 {@render children()}
