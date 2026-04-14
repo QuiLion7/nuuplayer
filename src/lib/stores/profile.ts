@@ -71,8 +71,8 @@ profile.subscribe((p) => {
 
 // Next threshold description (for debug panel)
 export const nextThreshold = derived(
-  [session, quickExitsCount, uniqueGamesVisited, maxTimeInGame, avgSessionDuration, profile],
-  ([$session, $quickExits, $uniqueGames, $maxTime, $avgDuration, $profile]) => {
+  [quickExitsCount, uniqueGamesVisited, maxTimeInGame, profile],
+  ([$quickExits, $uniqueGames, $maxTime, $profile]) => {
     if ($profile.type !== 'Unknown') return 'Perfil detectado ✓';
 
     const lines: string[] = [];
