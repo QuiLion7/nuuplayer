@@ -8,16 +8,17 @@
 	import { initTracker, destroyTracker } from '$lib/tracking/tracker';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import Header from '$lib/components/common/header.svelte';
+	import DebugPanel from '$lib/components/common/debug-panel.svelte';
 
 	let { children } = $props();
 
-	let profileAnnouncement = $state('');
-
-	$effect(() => {
-		if ($profile.type !== 'Unknown') {
-			profileAnnouncement = `Perfil detectado: ${$profile.type}. ${$profile.reason}`;
-		}
-	});
+	const profileAnnouncement = $derived(
+		$profile.type !== 'Unknown' 
+			? `Perfil detectado: ${$profile.type}. ${$profile.reason}` 
+			: ''
+	);
 
   $effect(() => {
     if (typeof document !== 'undefined') {
@@ -36,8 +37,7 @@
 
 		if (e.key === 'Backspace' && page.url.pathname !== '/') {
 			e.preventDefault();
-			// eslint-disable-next-line svelte/no-navigation-without-resolve
-			await goto('/');
+			await goto(resolve('/'));
 			return;
 		}
 
@@ -64,9 +64,12 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <ModeWatcher />
+<Header />	
 
 <div class="sr-only" aria-live="polite">
 	{profileAnnouncement}
 </div>
+
+<DebugPanel />
 
 {@render children()}
