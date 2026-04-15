@@ -1,52 +1,60 @@
-import { session } from '$lib/stores/session';
+import { CompositeTracker } from '$lib/services/tracking/eventTracker';
+import { SessionTracker } from '$lib/services/tracking/sessionTracker';
+import { DOMTracker } from '$lib/services/tracking/domTracker';
 
-let scrollHandler: ((e: Event) => void) | null = null;
-let clickHandler: ((e: Event) => void) | null = null;
-let keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+// Instância global do sistema de monitoramento
+let globalTracker: CompositeTracker | null = null;
+let globalDomTracker: DOMTracker | null = null;
 
-// Attach global tracking listeners to the document
-export function initTracker() {
-  if (typeof document === 'undefined') return;
+// Inicializa o sistema de monitoramento global
+export function initTracker(): void {
+  if (globalTracker) {
+    console.warn('Tracker já foi inicializado');
+    return;
+  }
 
-  // Track clicks
-  clickHandler = () => {
-    session.incrementClicks();
-  };
-  document.addEventListener('click', clickHandler);
+  // Cria o monitoramento composto
+  globalTracker = new CompositeTracker();
 
-  // Track keyboard hits (for navigation)
-  keydownHandler = (e: KeyboardEvent) => {
-    const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Spacebar', 'Enter', 'Backspace'];
+  // Adiciona o monitoramento de sessão
+  const sessionTracker = new SessionTracker();
+  globalTracker.addTracker(sessionTracker);
 
-    if (keys.includes(e.key)) {
-      // Ignore typing
-      const tag = (e.target as HTMLElement)?.tagName;
-
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
-      session.incrementKeyboardHits();
-    }
-  };
-  window.addEventListener('keydown', keydownHandler);
-
-  // Track scroll depth
-  scrollHandler = () => {
-    const scrolled = window.scrollY + window.innerHeight;
-    const total = document.documentElement.scrollHeight;
-    const depth = Math.round((scrolled / total) * 100);
-
-    session.updateScrollDepth(depth);
-  };
-  window.addEventListener('scroll', scrollHandler, { passive: true });
+  // Cria o monitoramento de DOM que envia eventos diretamente para o sessionTracker
+  // NÃO adiciona ao CompositeTracker para evitar loops
+  globalDomTracker = new DOMTracker(sessionTracker);
+  globalDomTracker.init();
 }
 
-/** Remove global tracking listeners */
-export function destroyTracker() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  if (clickHandler) document.removeEventListener('click', clickHandler);
-  if (scrollHandler) window.removeEventListener('scroll', scrollHandler);
-  if (keydownHandler) window.removeEventListener('keydown', keydownHandler);
-  
-  clickHandler = null;
-  scrollHandler = null;
-  keydownHandler = null;
+// Destrói o sistema de monitoramento global
+export function destroyTracker(): void {
+  if (globalDomTracker) {
+    globalDomTracker.destroy();
+    globalDomTracker = null;
+  }
+
+  if (globalTracker) {
+    globalTracker.destroy();
+    globalTracker = null;
+  }
+}
+
+// Obtém a instância do monitoramento global
+export function getTracker(): CompositeTracker | null {
+  return globalTracker;
+}
+// Rastreia o início de um jogo
+export function trackGameStart(gameId: string): void {
+  globalTracker?.track({
+    type: 'game_start',
+    data: { gameId }
+  });
+}
+
+// Rastreia o fim de um jogo
+export function trackGameEnd(gameId: string): void {
+  globalTracker?.track({
+    type: 'game_end',
+    data: { gameId }
+  });
 }
