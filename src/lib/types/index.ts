@@ -9,7 +9,7 @@ export interface Profile {
 
 export type GameCategory = 'puzzle' | 'action' | 'casual' | 'strategy' | 'quiz' | 'arcade';
 
-export interface Game {
+export interface GameInterface {
   id: string;
   title: string;
   description: string;
