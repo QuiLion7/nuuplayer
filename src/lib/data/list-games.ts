@@ -1,6 +1,6 @@
-import type { Game } from '$lib/types';
+import type { GameInterface } from '$lib/types';
 
-export const games: Game[] = [
+export const listGames: GameInterface[] = [
   // Svelte internal games
   {
     id: 'svelte-snake',
