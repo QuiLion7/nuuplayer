@@ -1,51 +1,31 @@
 import { writable, derived } from 'svelte/store';
+import { StorageService } from '$lib/services/storageService';
 import type { SessionData, GameSession } from '$lib/types';
 
-const STORAGE_KEY = 'nuuplayer_session';
-
-function createInitialSession(): SessionData {
-  return {
-    sessions: [],
-    totalClicks: 0,
-    keyboardHits: 0,
-    scrollDepth: 0,
-    visitedGames: [],
-    startTime: Date.now(),
-  };
-}
-
-function loadSession(): SessionData {
-  if (typeof localStorage === 'undefined') return createInitialSession();
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-
-    if (raw) return JSON.parse(raw);
-  } catch {
-    console.error('Failed to load session from localStorage');
-  }
-  return createInitialSession();
-}
-
 function createSessionStore() {
-  const { subscribe, set, update } = writable<SessionData>(loadSession());
+  const { subscribe, set, update } = writable<SessionData>(StorageService.loadSession());
 
-  function persist(data: SessionData) {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
+  function persist(data: SessionData): SessionData {
+    StorageService.saveSession(data);
     return data;
   }
 
   return {
     subscribe,
     reset() {
-      const fresh = createInitialSession();
+      const fresh: SessionData = {
+        sessions: [],
+        totalClicks: 0,
+        keyboardHits: 0,
+        scrollDepth: 0,
+        visitedGames: [],
+        startTime: Date.now(),
+      };
       set(persist(fresh));
     },
     startGame(gameId: string) {
       update((s) => {
-        // Close any open session first
+        // Primeirto fechar qualquer sessão aberta
         const sessions = s.sessions.map((sess) => {
           if (!sess.endTime) {
             const now = Date.now();
@@ -125,22 +105,24 @@ function createSessionStore() {
 
 export const session = createSessionStore();
 
-// Derived: quick exits count
+// Derived: contagem de saídas rápidas
 export const quickExitsCount = derived(session, ($s) =>
   $s.sessions.filter((sess) => sess.quickExit).length
 );
 
-// Derived: unique games visited
+// Derived: jogos únicos visitados
 export const uniqueGamesVisited = derived(session, ($s) => $s.visitedGames.length);
 
-// Derived: max time in any single game
+// Derived: tempo máximo em qualquer partida
 export const maxTimeInGame = derived(session, ($s) =>
   Math.max(0, ...$s.sessions.filter((s) => s.duration != null).map((s) => s.duration!))
 );
 
-// Derived: average session duration
+// Derived: duração média da sessão
 export const avgSessionDuration = derived(session, ($s) => {
   const completed = $s.sessions.filter((s) => s.duration != null);
+
   if (!completed.length) return 0;
+  
   return completed.reduce((acc, s) => acc + s.duration!, 0) / completed.length;
 });
