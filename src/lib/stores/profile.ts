@@ -1,9 +1,9 @@
 import { derived } from 'svelte/store';
 import { session, quickExitsCount, uniqueGamesVisited, maxTimeInGame, avgSessionDuration } from './session';
+import { StorageService } from '$lib/services/storageService';
 import type { Profile } from '$lib/types';
 
-const PROFILE_KEY = 'nuuplayer_profile';
-
+// Cria um perfil padrão quando não há dados suficientes
 function defaultProfile(): Profile {
   return {
     type: 'Unknown',
@@ -13,7 +13,7 @@ function defaultProfile(): Profile {
   };
 }
 
-// Profile is derived from session metrics
+// Store derivado que detecta o perfil do usuário baseado em métricas de sessão
 export const profile = derived(
   [session, quickExitsCount, uniqueGamesVisited, maxTimeInGame, avgSessionDuration],
   ([$session, $quickExits, $uniqueGames, $maxTime, $avgDuration]): Profile => {
@@ -49,6 +49,7 @@ export const profile = derived(
 
     // Rule 4: Casual — multiple short sessions with low avg duration
     const completedSessions = $session.sessions.filter((s) => s.duration != null);
+    
     if (completedSessions.length >= 2 && $avgDuration < 45 && $quickExits < 2) {
       return {
         type: 'Casual',
@@ -62,14 +63,14 @@ export const profile = derived(
   }
 );
 
-// Persist profile to localStorage whenever it changes
+// Persiste o perfil no localStorage quando detectado
 profile.subscribe((p) => {
-  if (typeof localStorage !== 'undefined' && p.type !== 'Unknown') {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  if (p.type !== 'Unknown') {
+    StorageService.saveProfile(p);
   }
 });
 
-// Next threshold description (for debug panel)
+// Store derivado que mostra o próximo threshold para detecção de perfil
 export const nextThreshold = derived(
   [quickExitsCount, uniqueGamesVisited, maxTimeInGame, profile],
   ([$quickExits, $uniqueGames, $maxTime, $profile]) => {
