@@ -11,6 +11,8 @@
 	import { resolve } from '$app/paths';
 	import Header from '$lib/components/common/header.svelte';
 	import DebugPanel from '$lib/components/common/debug-panel.svelte';
+	import { Toaster } from "$lib/components/ui/sonner/index.js";
+	import Footer from '$lib/components/common/footer.svelte';
 
 	let { children } = $props();
 
@@ -71,5 +73,9 @@
 </div>
 
 <DebugPanel />
+<Footer />
+<Toaster richColors position="top-center" />
 
-{@render children()}
+<main class="pb-16 max-sm:pb-14">
+  {@render children()}
+</main>
