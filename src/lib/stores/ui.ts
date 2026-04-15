@@ -1,8 +1,10 @@
 import { derived, writable } from 'svelte/store';
 import { profile } from './profile';
-import { games } from '$lib/data/list-games';
+import { listGames } from '$lib/data/list-games';
+import { gameScorer } from '$lib/services/gameScorer';
 import type { UIAdaptation, ProfileType } from '$lib/types';
 
+// Configuração de UI por tipo de perfil
 const adaptationMap: Record<ProfileType, Omit<UIAdaptation, 'profileType' | 'gameOrder'>> = {
   Unknown: {
     bannerMessage: 'Bem-vindo ao NuuPlayer',
@@ -51,36 +53,14 @@ const adaptationMap: Record<ProfileType, Omit<UIAdaptation, 'profileType' | 'gam
   },
 };
 
-function reorderGameIds(profileType: ProfileType): string[] {
-  const config = adaptationMap[profileType];
-  const priorityCats = config.priorityCategories;
-  const priorityTags = config.priorityTags;
-
-  const scored = games.map((g) => {
-    let score = 0;
-
-    if (priorityCats.includes(g.category)) score += 10;
-
-    for (const tag of g.tags) {
-      if (priorityTags.includes(tag)) score += 5;
-    }
-
-    if (profileType === 'Impatient' && g.isFast) score += 8;
-    if (profileType === 'Explorer' && g.isNew) score += 8;
-
-    return { id: g.id, score };
-  });
-
-  return scored.sort((a, b) => b.score - a.score).map((g) => g.id);
-}
-
+// Store derivado que adapta a UI baseado no perfil do usuário
 export const uiAdaptation = derived(profile, ($profile): UIAdaptation => {
   const config = adaptationMap[$profile.type];
 
   return {
     ...config,
     profileType: $profile.type,
-    gameOrder: reorderGameIds($profile.type),
+    gameOrder: gameScorer.reorderGameIds(listGames, $profile.type),
   };
 });
 
